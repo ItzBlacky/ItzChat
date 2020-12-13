@@ -118,8 +118,8 @@ namespace ItzChat
                     toReturn.Add("300");
                     toReturn.Add(authstring);
                 }
-                socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
-            }    
+            }
+            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
         }
         public void HandleRegister(WebSocket socket, Message message)
         {
@@ -147,8 +147,8 @@ namespace ItzChat
                     connections.Add(authstring, socket);
                     toReturn.Append(authstring);
                 }
-                socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
             }
+            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
         }
         public bool Authenticated(WebSocket socket)
         {
