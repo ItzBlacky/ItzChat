@@ -17,7 +17,6 @@ namespace ItzChat
      * 405 
      * 406 = not authenticated
      * 407 = already authenticated
-     * 408 = 
      * 
      * 
      * 
@@ -44,7 +43,7 @@ namespace ItzChat
         private AuthHandler auth;
         public ChatServer(AuthHandler handler) : base()
         {
-            this.auth = handler;
+            auth = handler;
         }
         protected override void OnMessage(MessageEventArgs e)
         {
@@ -91,7 +90,6 @@ namespace ItzChat
     }
     public class AuthHandler
     {
-        //
         private Dictionary<string, WebSocket> connections;
         private ItzContext db;
         public AuthHandler(ItzContext db)
@@ -103,46 +101,54 @@ namespace ItzChat
         {
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 2) toReturn.Add("402");
-            if (connections.ContainsValue(socket)) toReturn.Add("407");
-            string username = message.Data[0];
-            string password = message.Data[1];
-            User user = db.Users.FirstOrDefault(user => user.UserName == username);
-            if(user is null)
+            else if (connections.ContainsValue(socket)) toReturn.Add("407");
+            else
             {
-                toReturn.Add("404");
-            } else if(PasswordHash.ArgonHashStringVerify(Encoding.UTF8.GetBytes(password), Convert.FromBase64String(user.Password))) {
-                string authstring = GenerateRandomString();
-                connections.Add(authstring, socket);
-                toReturn.Add("300");
-                toReturn.Add(authstring);
-            }
-            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
+                string username = message.Data[0];
+                string password = message.Data[1];
+                User user = db.Users.FirstOrDefault(user => user.UserName == username);
+                if (user is null)
+                {
+                    toReturn.Add("404");
+                }
+                else if (PasswordHash.ArgonHashStringVerify(Encoding.UTF8.GetBytes(password), Convert.FromBase64String(user.Password)))
+                {
+                    string authstring = GenerateRandomString();
+                    connections.Add(authstring, socket);
+                    toReturn.Add("300");
+                    toReturn.Add(authstring);
+                }
+                socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
+            }    
         }
         public void HandleRegister(WebSocket socket, Message message)
         {
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 3) toReturn.Add("402");
-            if (connections.ContainsValue(socket)) toReturn.Add("407");
-            string username = message.Data[0];
-            string password = message.Data[1];
-            string email = message.Data[2];
-            if (db.Users.Any(x => (x.UserName == username) || (x.Email == email))) toReturn.Append("403");
-            else if (username.IsNullOrEmpty() || password.IsNullOrEmpty() || email.IsNullOrEmpty()) toReturn.Append("402");
+            else if (connections.ContainsValue(socket)) toReturn.Add("407");
             else
             {
-                string hashed = Convert.ToBase64String(PasswordHash.ArgonHashBinary(Encoding.UTF8.GetBytes(password),
-                    PasswordHash.ArgonGenerateSalt(),
-                    PasswordHash.StrengthArgon.Medium,
-                    256, PasswordHash.ArgonAlgorithm.Argon_2ID13));
-                User user = new User() { UserName = username, Email = email, Password = hashed };
-                db.Users.Add(user);
-                db.SaveChangesAsync();
-                toReturn.Append("300");
-                string authstring = GenerateRandomString();
-                connections.Add(authstring, socket);
-                toReturn.Append(authstring);
+                string username = message.Data[0];
+                string password = message.Data[1];
+                string email = message.Data[2];
+                if (db.Users.Any(x => (x.UserName == username) || (x.Email == email))) toReturn.Append("403");
+                else if (username.IsNullOrEmpty() || password.IsNullOrEmpty() || email.IsNullOrEmpty()) toReturn.Append("402");
+                else
+                {
+                    string hashed = Convert.ToBase64String(PasswordHash.ArgonHashBinary(Encoding.UTF8.GetBytes(password),
+                        PasswordHash.ArgonGenerateSalt(),
+                        PasswordHash.StrengthArgon.Medium,
+                        256, PasswordHash.ArgonAlgorithm.Argon_2ID13));
+                    User user = new User() { UserName = username, Email = email, Password = hashed };
+                    db.Users.Add(user);
+                    db.SaveChangesAsync();
+                    toReturn.Append("300");
+                    string authstring = GenerateRandomString();
+                    connections.Add(authstring, socket);
+                    toReturn.Append(authstring);
+                }
+                socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
             }
-            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
         }
         public bool Authenticated(WebSocket socket)
         {
