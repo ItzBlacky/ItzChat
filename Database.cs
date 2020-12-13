@@ -10,6 +10,8 @@ namespace ItzChat
         public DbSet<User> Users { get; set; }
         public DbSet<Messages> Messages { get; set; }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder builder) =>
+            builder.UseNpgsql(Environment.GetEnvironmentVariable("connectionstring"));
     }
     public class User
     {
