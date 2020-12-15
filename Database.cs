@@ -25,6 +25,6 @@ namespace ItzChat
         public long Id { get; set; }
         public string Sender { get; set; }
         public string Receiver { get; set; }
-        public string message { get; set; }
+        public string Message { get; set; }
     }
 }
