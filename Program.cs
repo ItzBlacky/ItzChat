@@ -57,13 +57,13 @@ namespace ItzChat
             {
                 // Sends error code 402 (Bad Request)
                 Console.WriteLine("not text");
-                Send(new Message("RESPONSE", new string[] { "402" }).toJson());
+                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
                 return;
             }
-            Message message = Message.fromJson(e.Data);
+            Message message = Message.FromJson(e.Data);
             if(message is null)
             {
-                Send(new Message("RESPONSE", new string[] { "402" }).toJson());
+                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
             }
 
 
@@ -76,7 +76,7 @@ namespace ItzChat
                 {
                     // Pass Login to Handler
                     auth.HandleLogin(Context.WebSocket, message);
-                    self = auth.getUser(Context.WebSocket);
+                    self = auth.GetUser(Context.WebSocket);
                     return;
                 }
                 // Checks if received message type is of "REGISTER"
@@ -84,17 +84,17 @@ namespace ItzChat
                 {
                     // Pass Register to Handler
                     auth.HandleRegister(Context.WebSocket, message);
-                    self = auth.getUser(Context.WebSocket);
+                    self = auth.GetUser(Context.WebSocket);
                     return;
                 }
                 // Sends error code 406 (Not Authenticated)
-                Send(new Message("RESPONSE", new string[] { "406"}).toJson());
+                Send(new Message("RESPONSE", new string[] { "406"}).ToJson());
                 return;
             }
 
             if(message.Data.Length < 1)
             {
-                Send(new Message("RESPONSE", new string[]{ "402" }).toJson());
+                Send(new Message("RESPONSE", new string[]{ "402" }).ToJson());
                 return;
             }
 
@@ -102,19 +102,19 @@ namespace ItzChat
             {
                 if(message.Data.Length != 3 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[]{ "402" }).toJson());
+                    Send(new Message("RESPONSE", new string[]{ "402" }).ToJson());
                     return;
                 }
-                if(!auth.verifyConnection(Context.WebSocket, message.Data[0]))
+                if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] {"406"}).toJson());
+                    Send(new Message("RESPONSE", new string[] {"406"}).ToJson());
                 }
-                WebSocket ToSend = auth.getConnection(message.Data[1]);
+                WebSocket ToSend = auth.GetConnection(message.Data[1]);
                 if(ToSend is null) 
                 {
-                    Send(new Message("RESPONSE", new string[] {"404"}).toJson());
+                    Send(new Message("RESPONSE", new string[] {"404"}).ToJson());
                 }
-                ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).toJson());
+                ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).ToJson());
                 return;
             }
 
@@ -132,7 +132,7 @@ namespace ItzChat
         }
         public void HandleLogin(WebSocket socket, Message message)
         {
-            flush();
+            Flush();
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 2) 
                 toReturn.Add("402");
@@ -155,11 +155,11 @@ namespace ItzChat
                     toReturn.Add(authstring);
                 }
             }
-            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
+            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).ToJson());
         }
         public void HandleRegister(WebSocket socket, Message message)
         {
-            flush();
+            Flush();
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 3) 
                 toReturn.Add("402");
@@ -190,23 +190,23 @@ namespace ItzChat
                 }
             }
 
-            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).toJson());
+            socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).ToJson());
         }
         public bool Authenticated(WebSocket socket)
         {
-            flush();
+            Flush();
             return connections.Any(x => x.socket == socket);
         }
-        public bool verifyConnection(WebSocket socket, string authstring)
+        public bool VerifyConnection(WebSocket socket, string authstring)
         {
-            flush();
+            Flush();
             return connections.Any(x => x.socket == socket && x.token == authstring);
         }
-        public WebSocket getConnection(string username)
+        public WebSocket GetConnection(string username)
         {
             return connections.FirstOrDefault(x => x.user.UserName == username).socket;
         }
-        public User getUser(WebSocket socket)
+        public User GetUser(WebSocket socket)
         {
             return connections.FirstOrDefault(x => x.socket == socket).user;
         }
@@ -220,7 +220,7 @@ namespace ItzChat
             }
             return str.ToString().Substring(0, length-1);
         }
-        private void flush()
+        private void Flush()
         {
             foreach(var entry in connections)
             {

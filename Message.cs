@@ -13,11 +13,11 @@ namespace ItzChat
             this.Data = Data;
         }
 
-        public string toJson()
+        public string ToJson()
         {
             return JsonSerializer.Serialize(this);
         }
-        public static Message fromJson(string Json)
+        public static Message FromJson(string Json)
         {
             try
             {
