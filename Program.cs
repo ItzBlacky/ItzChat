@@ -60,16 +60,10 @@ namespace ItzChat
                 Send(new Message("RESPONSE", new string[] { "402" }).toJson());
                 return;
             }
-            Message message;
-            try
+            Message message = Message.fromJson(e.Data);
+            if(message is null)
             {
-                // deserialize
-                message = Message.fromJson(e.Data);
-            } catch(JsonException)
-            {
-                // Sends error code 402 (Bad Request)
-                Send(new Message("RESPONSE", new string[]{ "402" }).toJson());
-                return;
+                Send(new Message("RESPONSE", new string[] { "402" }).toJson());
             }
 
 

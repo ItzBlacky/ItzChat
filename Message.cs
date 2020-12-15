@@ -19,7 +19,13 @@ namespace ItzChat
         }
         public static Message fromJson(string Json)
         {
-            return JsonSerializer.Deserialize<Message>(Json);
+            try
+            {
+                return JsonSerializer.Deserialize<Message>(Json);
+            } catch(JsonException)
+            {
+                return null;
+            }
         }
     }
 }
