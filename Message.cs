@@ -4,9 +4,9 @@ namespace ItzChat
 {
     public class Message
     {
-        public readonly string Type;
-        public readonly string[] Data;
-        public readonly string Sender;
+        public string Type { get; private set; }
+        public string[] Data { get; private set; }
+        public string Sender { get; private set; }
 
         public Message(string Type, string[] Data, string Sender = "")
         {

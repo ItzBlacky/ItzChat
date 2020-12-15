@@ -11,7 +11,7 @@ namespace ItzChat
         public DbSet<Messages> Messages { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder builder) =>
-            builder.UseNpgsql(Environment.GetEnvironmentVariable("connectionstring"));
+            builder.UseSqlite("Data Source=database.db");
     }
     public class User
     {
@@ -22,6 +22,7 @@ namespace ItzChat
     }
     public class Messages
     {
+        public long Id { get; set; }
         public string Sender { get; set; }
         public string Receiver { get; set; }
         public string message { get; set; }
