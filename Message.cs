@@ -1,11 +1,12 @@
 ﻿using System.Text.Json;
+using System;
 
 namespace ItzChat
 {
     public class Message
     {
-        public readonly string Type;
-        public readonly string[] Data;
+        public string Type { get; private set; }
+        public string[] Data { get; private set; }
 
         public Message(string Type, string[] Data)
         {

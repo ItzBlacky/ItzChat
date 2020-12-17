@@ -1,6 +1,4 @@
-﻿using System.Net.Http;
-using System.Reflection.Metadata;
-using Sodium;
+﻿using Sodium;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +14,7 @@ namespace ItzChat
      * 402 = bad request
      * 403 = username or email in use
      * 404 = not found
-     * 405 
+     * 405 = wrong credential
      * 406 = not authenticated
      * 407 = already authenticated
      * 
@@ -25,7 +23,6 @@ namespace ItzChat
      */
     class Program
     {
-        
         static void Main(string[] args)
         {
             using(ItzContext db = new ItzContext())
@@ -56,17 +53,37 @@ namespace ItzChat
             if (!e.IsText)
             {
                 // Sends error code 402 (Bad Request)
-                Console.WriteLine("not text");
                 Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
                 return;
             }
-            Message message = Message.FromJson(e.Data);
+            if(e.Data.IsNullOrEmpty() || e.Data == "{}")
+            {
+                // Sends error code 402 (Bad Request)
+                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                return;
+            }
+            Message message;
+            Console.WriteLine($"\n\n\n{e.Data}\n\n");
+            try
+            {
+                Console.WriteLine("1");
+                message =  JsonSerializer.Deserialize<Message>(e.Data);
+                Console.WriteLine("2");
+            } catch(JsonException)
+            {
+                Console.WriteLine("3");
+                message = new Message("", new string[] { "" });
+                Console.WriteLine("4");
+            }
+            Console.WriteLine("5");
             if(message is null)
             {
+                Console.WriteLine("Invalid message");
                 Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                return;
             }
 
-
+            Console.WriteLine("Valid Message");
             // Checks if connection is authenticated
             if(!auth.Authenticated(Context.WebSocket))
             {
@@ -88,12 +105,14 @@ namespace ItzChat
                     return;
                 }
                 // Sends error code 406 (Not Authenticated)
+                Console.WriteLine("Not Authenticated 2");
                 Send(new Message("RESPONSE", new string[] { "406"}).ToJson());
                 return;
             }
-
+            Console.WriteLine("Authenticated");
             if(message.Data.Length < 1)
             {
+                Console.WriteLine("Message length is less than one");
                 Send(new Message("RESPONSE", new string[]{ "402" }).ToJson());
                 return;
             }
@@ -108,17 +127,19 @@ namespace ItzChat
                 if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
                     Send(new Message("RESPONSE", new string[] {"406"}).ToJson());
+                    return;
                 }
                 WebSocket ToSend = auth.GetConnection(message.Data[1]);
                 if(ToSend is null) 
                 {
                     Send(new Message("RESPONSE", new string[] {"404"}).ToJson());
+                    return;
                 }
                 ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).ToJson());
                 return;
             }
 
-
+            Console.WriteLine($"Message Type not found: {message.Type}");
         }
     }
     public class AuthHandler
@@ -133,6 +154,7 @@ namespace ItzChat
         public void HandleLogin(WebSocket socket, Message message)
         {
             Flush();
+            Console.WriteLine("Handling Login");
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 2) 
                 toReturn.Add("402");
@@ -140,21 +162,30 @@ namespace ItzChat
                 toReturn.Add("407");
             else
             {
+                Console.WriteLine("11");
                 string username = message.Data[0];
                 string password = message.Data[1];
                 User user = db.Users.FirstOrDefault(user => user.UserName == username);
                 if (user is null)
                 {
+                    Console.WriteLine("12");
                     toReturn.Add("404");
                 }
-                else if (PasswordHash.ArgonHashStringVerify(Encoding.UTF8.GetBytes(password), Convert.FromBase64String(user.Password)))
+                else if (PasswordHash.ArgonHashStringVerify(Convert.FromBase64String(user.Password),
+                                                            Encoding.UTF8.GetBytes(password)))
                 {
+                    Console.WriteLine("13");
                     string authstring = GenerateRandomString();
                     connections.Add((user, authstring, socket));
                     toReturn.Add("300");
                     toReturn.Add(authstring);
+                } else
+                {
+                    Console.WriteLine("14");
+                    toReturn.Add("405");
                 }
             }
+            Console.WriteLine("15");
             socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).ToJson());
         }
         public void HandleRegister(WebSocket socket, Message message)
@@ -195,12 +226,12 @@ namespace ItzChat
         public bool Authenticated(WebSocket socket)
         {
             Flush();
-            return connections.Any(x => x.socket == socket);
+            return connections.Any(x => x.socket.Equals(socket));
         }
         public bool VerifyConnection(WebSocket socket, string authstring)
         {
             Flush();
-            return connections.Any(x => x.socket == socket && x.token == authstring);
+            return connections.Any(x => x.socket.Equals(socket) && x.token == authstring);
         }
         public WebSocket GetConnection(string username)
         {
@@ -208,25 +239,37 @@ namespace ItzChat
         }
         public User GetUser(WebSocket socket)
         {
-            return connections.FirstOrDefault(x => x.socket == socket).user;
+            return connections.FirstOrDefault(x => x.socket.Equals(socket)).user;
         }
-        private string GenerateRandomString(int length = 2048)
+        public static string GenerateRandomString(int length = 2048)
         {
             StringBuilder str = new StringBuilder();
-            
             while(str.Length < length)
             {
-                    str.Append(Convert.ToBase64String(PasswordHash.ArgonGenerateSalt()));
+                str.Append(Convert.ToBase64String(PasswordHash.ArgonGenerateSalt()));
+                str.Replace("+", "");
             }
-            return str.ToString().Substring(0, length-1);
+            return str.ToString().Substring(0, length);
         }
-        private void Flush()
-        {
+        public void Flush()
+        {   
+            Console.WriteLine("Flushing..");
+            try {
             foreach(var entry in connections)
             {
-                if((!entry.socket.IsAlive) || true)
+                if(!entry.socket.IsAlive)
+                {
+                    Console.WriteLine($"Removing connection of user with username {entry.user.UserName}");
                     connections.Remove(entry);
+                    Console.WriteLine("0");
+                }
+                Console.WriteLine("1");
             }
+            } catch(Exception)
+                    {
+                        Console.WriteLine("e");
+                    }
+            Console.WriteLine("2");
         }
     }
 }
