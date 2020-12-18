@@ -63,7 +63,10 @@ namespace ItzChat
                 else
                 {
                     string hashed = Convert.ToBase64String(Encoding.UTF8.GetBytes(
-                                                            PasswordHash.ArgonHashString(password, PasswordHash.StrengthArgon.Medium)));
+                                                            PasswordHash.ArgonHashString(
+                                                                password,
+                                                                    PasswordHash.StrengthArgon.Medium
+                                                            )));
                     User user = new User() { UserName = username, Email = email, Password = hashed };
                     db.Users.Add(user);
                     db.SaveChangesAsync();
@@ -102,11 +105,10 @@ namespace ItzChat
             while (str.Length < length)
             {
                 str.Append(Convert.ToBase64String(PasswordHash.ArgonGenerateSalt()));
-                str.Replace("+", "");
             }
             return str.ToString().Substring(0, length);
         }
-        public void Flush()
+        private void Flush()
         {
             connections.RemoveAll(x => !x.socket.IsAlive);
         }

@@ -1,14 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace ItzChat
 {
     public class ItzContext : DbContext
     {
         public DbSet<User> Users { get; set; }
-        public DbSet<Messages> Messages { get; set; }
+        public DbSet<Message> Messages { get; set; }
+        public DbSet<Group> Groups { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder builder) =>
             builder.UseSqlite("Data Source=database.db");
@@ -20,11 +19,17 @@ namespace ItzChat
         public string Email { get; set; }
         public string Password { get; set; }
     }
-    public class Messages
+    public class Message
     {
         public long Id { get; set; }
-        public string Sender { get; set; }
-        public string Receiver { get; set; }
-        public string Message { get; set; }
+        public User Sender { get; set; }
+        public User Receiver { get; set; }
+        public string Content { get; set; }
+    }
+    public class Group
+    {   
+        public long Id { get; set; }
+        public string Name { get; set; }
+        public List<User> members { get; set; }
     }
 }

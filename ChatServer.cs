@@ -29,20 +29,7 @@ namespace ItzChat
                 Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
                 return;
             }
-            Message message;
-            Console.WriteLine($"\n\n\n{e.Data}\n\n");
-            try
-            {
-                Console.WriteLine("1");
-                message = JsonSerializer.Deserialize<Message>(e.Data);
-                Console.WriteLine("2");
-            }
-            catch (JsonException)
-            {
-                Console.WriteLine("3");
-                message = new Message("", new string[] { "" });
-                Console.WriteLine("4");
-            }
+            Message message = Message.FromJson(e.Data);
             Console.WriteLine("5");
             if (message is null)
             {

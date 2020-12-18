@@ -23,7 +23,8 @@ namespace ItzChat
             try
             {
                 return JsonSerializer.Deserialize<Message>(Json);
-            } catch(JsonException)
+            } 
+            catch(JsonException)
             {
                 return null;
             }
