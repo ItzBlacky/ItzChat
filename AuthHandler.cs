@@ -19,7 +19,6 @@ namespace ItzChat
         public void HandleLogin(WebSocket socket, Message message)
         {
             Flush();
-            Console.WriteLine("Handling Login");
             List<string> toReturn = new List<string>();
             if (message.Data.Length != 2)
                 toReturn.Add("402");
@@ -27,15 +26,11 @@ namespace ItzChat
                 toReturn.Add("407");
             else
             {
-                Console.WriteLine("11");
                 string username = message.Data[0];
                 string password = message.Data[1];
                 User user = db.Users.FirstOrDefault(user => user.UserName == username);
                 if (user is null)
-                {
-                    Console.WriteLine("12");
                     toReturn.Add("404");
-                }
                 else if (PasswordHash.ArgonHashStringVerify(Encoding.UTF8.GetString(Convert.FromBase64String(user.Password)), password))
                 {
                     string authstring = GenerateRandomString();
@@ -44,11 +39,8 @@ namespace ItzChat
                     toReturn.Add(authstring);
                 }
                 else
-                { }
                     toReturn.Add("405");
-                }
             }
-            Console.WriteLine("15");
             socket.Send(new Message("AUTHRESPONSE", toReturn.ToArray()).ToJson());
         }
         public void HandleRegister(WebSocket socket, Message message)
@@ -96,10 +88,12 @@ namespace ItzChat
         }
         public WebSocket GetConnection(string username)
         {
+            Flush();
             return connections.FirstOrDefault(x => x.user.UserName == username).socket;
         }
         public User GetUser(WebSocket socket)
         {
+            Flush();
             return connections.FirstOrDefault(x => x.socket.Equals(socket)).user;
         }
         public static string GenerateRandomString(int length = 2048)
@@ -114,25 +108,7 @@ namespace ItzChat
         }
         public void Flush()
         {
-            Console.WriteLine("Flushing..");
-            try
-            {
-                foreach (var entry in connections)
-                {
-                    if (!entry.socket.IsAlive)
-                    {
-                        Console.WriteLine($"Removing connection of user with username {entry.user.UserName}");
-                        connections.Remove(entry);
-                        Console.WriteLine("0");
-                    }
-                    Console.WriteLine("1");
-                }
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("e");
-            }
-            Console.WriteLine("2");
+            connections.RemoveAll(x => !x.socket.IsAlive);
         }
     }
 }
