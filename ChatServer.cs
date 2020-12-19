@@ -22,14 +22,14 @@ namespace ItzChat
             if (!e.IsText || e.Data.IsNullOrEmpty() || e.Data == "{}")
             {
                 // Sends error code 402 (Bad Request)
-                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                SendCode("402");
                 return;
             }
             Message message = Message.FromJson(e.Data);
             if (message is null)
             {
                 Console.WriteLine("Invalid message");
-                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                SendCode("402");
                 return;
             }
 
@@ -55,14 +55,14 @@ namespace ItzChat
                     return;
                 }
                 // Sends error code 406 (Unauthorized)
-                Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                SendCode("406");
                 return;
             }
             Console.WriteLine("Authenticated");
             if (message.Data.Length < 1)
             {
                 Console.WriteLine("Message length is less than one");
-                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                SendCode("402");
                 return;
             }
 
@@ -71,18 +71,18 @@ namespace ItzChat
                 // Data = ["authkey", "username to send to", "message"]
                 if (message.Data.Length != 3 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    SendCode("402");
                     return;
                 }
                 if (!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
                 WebSocket ToSend = auth.GetConnection(message.Data[1]);
                 if (ToSend is null)
                 {
-                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    SendCode("405");
                     return;
                 }
                 ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).ToJson());
@@ -94,18 +94,18 @@ namespace ItzChat
                 // Data = ["authkey", "groupname to send to", "message"]
                 if (message.Data.Length != 3 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 if (!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
                 Group group = db.Groups.FirstOrDefault(x => x.Name == message.Data[1]);
                 if(group is null)
                 {
-                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 foreach(User user in group.Members)
@@ -128,17 +128,17 @@ namespace ItzChat
                 // Data = ["authkey", "group name"]
                 if(message.Data.Length != 2 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    SendCode("402");
                     return;
                 }
                 if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
-                if(db.Groups.Any(x => x.Name == message.Data[1]))
+                if(!db.Groups.Any(x => x.Name == message.Data[1]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "403" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 Group group = new Group() { Name = message.Data[1], Owner = self, Admins = new List<User>(), Members = new List<User>() };
@@ -152,12 +152,12 @@ namespace ItzChat
                 // Data = ["authkey", "groupname", "user1", "user2", ...]
                 if(message.Data.Length < 3 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    SendCode("402");
                     return;
                 }
                 if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
                 
@@ -165,12 +165,12 @@ namespace ItzChat
 
                 if(group is null)
                 {
-                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 if(!group.Admins.Any(x => x.Equals(self)))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
                 for(int i = 2; i < message.Data.Length; i++)
@@ -189,12 +189,12 @@ namespace ItzChat
                 // Data = ["authkey", "groupname", "user"]
                 if(message.Data.Length != 3 || message.Data[0].Length != 2048)
                 {
-                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    SendCode("402");
                     return;
                 }
                 if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
 
@@ -202,12 +202,12 @@ namespace ItzChat
                 
                 if(group is null)
                 {
-                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 if(!group.Owner.Equals(self))
                 {
-                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    SendCode("406");
                     return;
                 }
 
@@ -215,7 +215,7 @@ namespace ItzChat
                 
                 if(toAdd is null)
                 {
-                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    SendCode("404");
                     return;
                 }
                 group.Admins.Add(toAdd);
@@ -224,6 +224,11 @@ namespace ItzChat
             }
 
             Console.WriteLine($"Message Type not found: {message.Type}");
+        }
+        
+        private void SendCode(string code)
+        {
+            Send(new Message("RESPONSE", new string[] { code }).ToJson());
         }
     }
 }
