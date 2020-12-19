@@ -6,7 +6,7 @@ namespace ItzChat
     public class ItzContext : DbContext
     {
         public DbSet<User> Users { get; set; }
-        public DbSet<Message> Messages { get; set; }
+        public DbSet<Messages> Messages { get; set; }
         public DbSet<Group> Groups { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder builder) =>
@@ -19,7 +19,7 @@ namespace ItzChat
         public string Email { get; set; }
         public string Password { get; set; }
     }
-    public class Message
+    public class Messages
     {
         public long Id { get; set; }
         public User Sender { get; set; }
@@ -30,6 +30,8 @@ namespace ItzChat
     {   
         public long Id { get; set; }
         public string Name { get; set; }
-        public List<User> members { get; set; }
+        public User Owner { get; set; }
+        public List<User> Admins { get; set; }
+        public List<User> Members { get; set; }
     }
 }

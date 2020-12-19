@@ -1,5 +1,6 @@
 using System;
-using System.Text.Json;
+using System.Collections.Generic;
+using System.Linq;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 
@@ -8,29 +9,23 @@ namespace ItzChat
     public class ChatServer : WebSocketBehavior
     {
 
-        private AuthHandler auth;
+        private readonly AuthHandler auth;
+        private readonly ItzContext db;
         private User self;
-        public ChatServer(AuthHandler handler) : base()
+        public ChatServer(AuthHandler auth, ItzContext db) : base()
         {
-            auth = handler;
+            this.auth = auth;
+            this.db = db;
         }
         protected override void OnMessage(MessageEventArgs e)
         {
-            // return if data is not a string
-            if (!e.IsText)
-            {
-                // Sends error code 402 (Bad Request)
-                Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
-                return;
-            }
-            if (e.Data.IsNullOrEmpty() || e.Data == "{}")
+            if (!e.IsText || e.Data.IsNullOrEmpty() || e.Data == "{}")
             {
                 // Sends error code 402 (Bad Request)
                 Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
                 return;
             }
             Message message = Message.FromJson(e.Data);
-            Console.WriteLine("5");
             if (message is null)
             {
                 Console.WriteLine("Invalid message");
@@ -59,8 +54,7 @@ namespace ItzChat
                     self = auth.GetUser(Context.WebSocket);
                     return;
                 }
-                // Sends error code 406 (Not Authenticated)
-                Console.WriteLine("Not Authenticated 2");
+                // Sends error code 406 (Unauthorized)
                 Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
                 return;
             }
@@ -74,6 +68,7 @@ namespace ItzChat
 
             if (message.Type == "SENDTOUSERNAME")
             {
+                // Data = ["authkey", "username to send to", "message"]
                 if (message.Data.Length != 3 || message.Data[0].Length != 2048)
                 {
                     Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
@@ -91,6 +86,140 @@ namespace ItzChat
                     return;
                 }
                 ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).ToJson());
+                return;
+            }
+
+            if(message.Type == "SENDTOGROUP")
+            {
+                // Data = ["authkey", "groupname to send to", "message"]
+                if (message.Data.Length != 3 || message.Data[0].Length != 2048)
+                {
+                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    return;
+                }
+                if (!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+                Group group = db.Groups.FirstOrDefault(x => x.Name == message.Data[1]);
+                if(group is null)
+                {
+                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    return;
+                }
+                foreach(User user in group.Members)
+                {
+                    WebSocket toSend = auth.GetConnection(user);
+                    if(toSend is null) 
+                        continue;
+                    toSend.Send(new Message("GROUPMESSAGE",
+                                                    new string[] { 
+                                                        group.Id.ToString(),
+                                                        group.Name,
+                                                        message.Data[2] 
+                                                    }).ToJson());
+                }
+                return;
+            }
+
+            if(message.Type == "CREATEGROUP")
+            {
+                // Data = ["authkey", "group name"]
+                if(message.Data.Length != 2 || message.Data[0].Length != 2048)
+                {
+                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    return;
+                }
+                if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+                if(db.Groups.Any(x => x.Name == message.Data[1]))
+                {
+                    Send(new Message("RESPONSE", new string[] { "403" }).ToJson());
+                    return;
+                }
+                Group group = new Group() { Name = message.Data[1], Owner = self, Admins = new List<User>(), Members = new List<User>() };
+                db.Groups.Add(group);
+                db.SaveChangesAsync();
+                return;
+            }
+
+            if(message.Type == "ADDUSERNAMETOGROUP")
+            {
+                // Data = ["authkey", "groupname", "user1", "user2", ...]
+                if(message.Data.Length < 3 || message.Data[0].Length != 2048)
+                {
+                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    return;
+                }
+                if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+                
+                Group group = db.Groups.FirstOrDefault(x => x.Name == message.Data[1]);
+
+                if(group is null)
+                {
+                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    return;
+                }
+                if(!group.Admins.Any(x => x.Equals(self)))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+                for(int i = 2; i < message.Data.Length; i++)
+                {
+                    User user = db.Users.FirstOrDefault(x => x.UserName == message.Data[i]);
+                    if(user is null) 
+                        continue;
+                    group.Members.Add(user);
+                }
+                db.SaveChangesAsync();
+                return;
+            }
+
+            if(message.Type == "SETMEMBEROFGROUPASADMIN")
+            {
+                // Data = ["authkey", "groupname", "user"]
+                if(message.Data.Length != 3 || message.Data[0].Length != 2048)
+                {
+                    Send(new Message("RESPONSE", new string[] { "402" }).ToJson());
+                    return;
+                }
+                if(!auth.VerifyConnection(Context.WebSocket, message.Data[0]))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+
+                Group group = db.Groups.FirstOrDefault(x => x.Name == message.Data[0]);
+                
+                if(group is null)
+                {
+                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    return;
+                }
+                if(!group.Owner.Equals(self))
+                {
+                    Send(new Message("RESPONSE", new string[] { "406" }).ToJson());
+                    return;
+                }
+
+                User toAdd = group.Members.FirstOrDefault(x => x.UserName == message.Data[2]);
+                
+                if(toAdd is null)
+                {
+                    Send(new Message("RESPONSE", new string[] { "404" }).ToJson());
+                    return;
+                }
+                group.Admins.Add(toAdd);
+                db.SaveChangesAsync();
                 return;
             }
 

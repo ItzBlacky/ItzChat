@@ -9,8 +9,8 @@ namespace ItzChat
 {
     public class AuthHandler
     {
-        private List<(User user, string token, WebSocket socket)> connections;
-        private ItzContext db;
+        private readonly List<(User user, string token, WebSocket socket)> connections;
+        private readonly ItzContext db;
         public AuthHandler(ItzContext db)
         {
             connections = new List<(User, string, WebSocket)>();
@@ -88,6 +88,11 @@ namespace ItzChat
         {
             Flush();
             return connections.Any(x => x.socket.Equals(socket) && x.token == authstring);
+        }
+        public WebSocket GetConnection(User user)
+        {
+            Flush();
+            return connections.FirstOrDefault(x => x.user.Equals(user)).socket;
         }
         public WebSocket GetConnection(string username)
         {
