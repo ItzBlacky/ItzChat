@@ -33,7 +33,6 @@ namespace ItzChat
                 return;
             }
 
-            Console.WriteLine("Valid Message");
             // Checks if connection is authenticated
             if (!auth.Authenticated(Context.WebSocket))
             {
@@ -58,10 +57,9 @@ namespace ItzChat
                 SendCode("406");
                 return;
             }
-            Console.WriteLine("Authenticated");
+
             if (message.Data.Length < 1)
             {
-                Console.WriteLine("Message length is less than one");
                 SendCode("402");
                 return;
             }
@@ -86,6 +84,7 @@ namespace ItzChat
                     return;
                 }
                 ToSend.Send(new Message("MESSAGE", new string[] { self.Id.ToString(), self.UserName, message.Data[2] }).ToJson());
+                Send("300");
                 return;
             }
 
@@ -102,12 +101,15 @@ namespace ItzChat
                     SendCode("406");
                     return;
                 }
+
                 Group group = db.Groups.FirstOrDefault(x => x.Name == message.Data[1]);
+
                 if(group is null)
                 {
                     SendCode("404");
                     return;
                 }
+                
                 foreach(User user in group.Members)
                 {
                     WebSocket toSend = auth.GetConnection(user);
@@ -120,6 +122,8 @@ namespace ItzChat
                                                         message.Data[2] 
                                                     }).ToJson());
                 }
+
+                SendCode("300");
                 return;
             }
 
@@ -144,6 +148,7 @@ namespace ItzChat
                 Group group = new Group() { Name = message.Data[1], Owner = self, Admins = new List<User>(), Members = new List<User>() };
                 db.Groups.Add(group);
                 db.SaveChangesAsync();
+                SendCode("300");
                 return;
             }
 
@@ -181,6 +186,7 @@ namespace ItzChat
                     group.Members.Add(user);
                 }
                 db.SaveChangesAsync();
+                SendCode("300");
                 return;
             }
 
@@ -220,15 +226,16 @@ namespace ItzChat
                 }
                 group.Admins.Add(toAdd);
                 db.SaveChangesAsync();
+                SendCode("300");
                 return;
             }
 
             Console.WriteLine($"Message Type not found: {message.Type}");
         }
         
-        private void SendCode(string code)
+        private void SendCode(params string[] code)
         {
-            Send(new Message("RESPONSE", new string[] { code }).ToJson());
+            Send(new Message("RESPONSE", code).ToJson());
         }
     }
 }
